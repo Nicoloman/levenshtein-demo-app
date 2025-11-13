@@ -1,0 +1,326 @@
+<div class="levenshtein-demo">
+  <!-- Header Section -->
+  <div class="demo-header">
+    <h1>🧮 Demostración del Algoritmo de Levenshtein</h1>
+    <p class="subtitle">
+      Visualización interactiva de la distancia de edición entre cadenas usando matrices
+    </p>
+  </div>
+
+  <!-- Controls Section -->
+  <div class="controls-section">
+    <div class="input-controls">
+      <div class="input-group">
+        <label for="stringA">Primera Cadena (A):</label>
+        <input 
+          id="stringA"
+          type="text" 
+          [(ngModel)]="stringA" 
+          (input)="onInputChange()"
+          placeholder="Escribe una palabra..."
+          class="string-input"
+          maxlength="15"
+        />
+        <span class="char-count">{{stringA.length}} chars</span>
+      </div>
+      
+      <div class="input-group">
+        <label for="stringB">Segunda Cadena (B):</label>
+        <input 
+          id="stringB"
+          type="text" 
+          [(ngModel)]="stringB" 
+          (input)="onInputChange()"
+          placeholder="Escribe otra palabra..."
+          class="string-input"
+          maxlength="15"
+        />
+        <span class="char-count">{{stringB.length}} chars</span>
+      </div>
+    </div>
+
+    <div class="action-buttons">
+      <button (click)="swapStrings()" class="btn btn-secondary">
+        🔄 Intercambiar
+      </button>
+      <button (click)="clearInputs()" class="btn btn-secondary">
+        🗑️ Limpiar
+      </button>
+      <button 
+        (click)="startStepByStepAnimation()" 
+        class="btn btn-primary"
+        [disabled]="isAnimating || stringA.length === 0 || stringB.length === 0"
+      >
+        ▶️ Paso a Paso
+      </button>
+    </div>
+  </div>
+
+  <!-- Preset Examples -->
+  <div class="preset-examples">
+    <h3>📚 Ejemplos Predefinidos:</h3>
+    <div class="example-buttons">
+      <button 
+        *ngFor="let example of presetExamples" 
+        (click)="loadPresetExample(example)"
+        class="btn btn-example"
+        [disabled]="isAnimating"
+      >
+        "{{example.a}}" → "{{example.b}}"
+        <small>{{example.description}}</small>
+      </button>
+    </div>
+  </div>
+
+  <!-- Fuzzy Matching Controls -->
+  <div class="fuzzy-controls-section" *ngIf="stringA.length > 0 || stringB.length > 0">
+    <h3>🎯 Control de Umbral Difuso</h3>
+    
+    <div class="threshold-controls">
+      <div class="threshold-slider-container">
+        <label for="thresholdSlider">Umbral de Similitud:</label>
+        <div class="slider-wrapper">
+          <input 
+            id="thresholdSlider"
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.05" 
+            [(ngModel)]="fuzzyThreshold"
+            (input)="onThresholdChange()"
+            class="threshold-slider"
+          />
+          <div class="slider-labels">
+            <span>0%</span>
+            <span>25%</span>
+            <span>50%</span>
+            <span>75%</span>
+            <span>100%</span>
+          </div>
+        </div>
+        <div class="threshold-display">
+          <span class="threshold-value">{{ getThresholdPercentage() }}</span>
+          <span class="threshold-description">{{ getThresholdDescription() }}</span>
+        </div>
+      </div>
+
+      <div class="preset-thresholds">
+        <h4>Presets Rápidos:</h4>
+        <div class="preset-buttons">
+          <button 
+            *ngFor="let preset of thresholdPresets"
+            (click)="setPresetThreshold(preset.value)"
+            class="btn btn-preset"
+            [class.active]="isPresetActive(preset.value)"
+            [style.border-color]="preset.color"
+          >
+            <strong>{{preset.name}}</strong>
+            <small>{{preset.description}}</small>
+            <span class="preset-value">{{(preset.value * 100).toFixed(0)}}%</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enhanced Result Display -->
+  <div class="result-section" *ngIf="stringA.length > 0 || stringB.length > 0">
+    <div class="distance-result">
+      <div class="match-indicator" [class.match]="isMatch" [class.no-match]="!isMatch">
+        <div class="match-icon">
+          {{ isMatch ? '✅' : '❌' }}
+        </div>
+        <div class="match-text">
+          {{ isMatch ? 'COINCIDENCIA' : 'NO COINCIDE' }}
+        </div>
+        <div class="match-details">
+          Similitud: {{ similarityPercentage }}% 
+          ({{ getNormalizedDistance().toFixed(2) }} ≤ {{ fuzzyThreshold.toFixed(2) }})
+        </div>
+      </div>
+
+      <div class="detailed-metrics">
+        <div class="metric-item">
+          <span class="metric-label">📏 Distancia:</span>
+          <span class="metric-value">{{ getFinalDistance() }} operaciones</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">📊 Longitud máxima:</span>
+          <span class="metric-value">{{ getMaxLength() }} caracteres</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">🎯 Distancia normalizada:</span>
+          <span class="metric-value">{{ getNormalizedDistance().toFixed(3) }}</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">📈 Similitud:</span>
+          <span class="metric-value">{{ similarityPercentage }}%</span>
+        </div>
+      </div>
+
+      <p class="calculation-explanation">
+        <strong>Cálculo:</strong> Distancia {{ getFinalDistance() }} ÷ Longitud máxima {{ getMaxLength() }} = {{ getNormalizedDistance().toFixed(3) }}
+        <br>
+        <strong>Resultado:</strong> {{ getNormalizedDistance().toFixed(3) }} {{ isMatch ? '≤' : '>' }} {{ fuzzyThreshold.toFixed(2) }} → {{ isMatch ? 'COINCIDE' : 'NO COINCIDE' }}
+      </p>
+    </div>
+  </div>
+
+  <!-- Step-by-step Animation Controls -->
+  <div class="animation-controls" *ngIf="isAnimating">
+    <div class="step-info">
+      <h3>📍 Paso {{currentStep + 1}} de {{calculationSteps.length}}</h3>
+      <div class="current-step-details" *ngIf="getCurrentStepData() as step">
+        <div class="step-calculation">
+          <p>
+            <strong>Comparando:</strong> 
+            '{{step.charA}}' (posición {{step.j}}) con '{{step.charB}}' (posición {{step.i}})
+          </p>
+          
+          <div class="operation-costs">
+            <div class="cost-item">
+              <span class="cost-label">Sustitución/Coincidencia:</span>
+              <span class="cost-value">{{step.substitutionCost}}</span>
+              <span class="cost-explanation" *ngIf="step.match">(¡Coinciden! +0)</span>
+              <span class="cost-explanation" *ngIf="!step.match">(Diferentes +1)</span>
+            </div>
+            
+            <div class="cost-item">
+              <span class="cost-label">Inserción:</span>
+              <span class="cost-value">{{step.insertionCost}}</span>
+              <span class="cost-explanation">(+1)</span>
+            </div>
+            
+            <div class="cost-item">
+              <span class="cost-label">Eliminación:</span>
+              <span class="cost-value">{{step.deletionCost}}</span>
+              <span class="cost-explanation">(+1)</span>
+            </div>
+          </div>
+          
+          <div class="selected-operation">
+            <strong>Operación seleccionada:</strong> 
+            <span class="operation-name">{{step.selectedOperation}}</span>
+            <strong>Valor final:</strong> 
+            <span class="final-value">{{step.finalValue}}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="step-controls">
+      <button (click)="previousStep()" [disabled]="currentStep <= 0" class="btn btn-step">
+        ⬅️ Anterior
+      </button>
+      <button (click)="nextStep()" class="btn btn-step">
+        {{currentStep >= calculationSteps.length - 1 ? '✅ Finalizar' : 'Siguiente ➡️'}}
+      </button>
+      <button (click)="stopAnimation()" class="btn btn-secondary">
+        ⏹️ Detener
+      </button>
+    </div>
+  </div>
+
+  <!-- Matrix Visualization -->
+  <div class="matrix-section" *ngIf="matrix.length > 0">
+    <h3>🎯 Matriz de Distancias</h3>
+    
+    <!-- Legend -->
+    <div class="matrix-legend">
+      <div class="legend-item">
+        <span class="legend-color operation-init"></span>
+        <span>Inicialización</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color operation-match"></span>
+        <span>Coincidencia</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color operation-substitution"></span>
+        <span>Sustitución</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color operation-insertion"></span>
+        <span>Inserción</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color operation-deletion"></span>
+        <span>Eliminación</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color optimal-path"></span>
+        <span>Camino Óptimo</span>
+      </div>
+    </div>
+    
+    <!-- Matrix Table -->
+    <div class="matrix-container">
+      <table class="distance-matrix">
+        <!-- Header row with string A characters -->
+        <thead>
+          <tr>
+            <th class="matrix-header corner-cell">∅</th>
+            <th class="matrix-header empty-cell">∅</th>
+            <th 
+              *ngFor="let char of stringA.split(''); let j = index" 
+              class="matrix-header char-header"
+            >
+              {{char}}
+            </th>
+          </tr>
+        </thead>
+        
+        <tbody>
+          <!-- Matrix rows -->
+          <tr *ngFor="let row of matrix; let i = index">
+            <!-- Row header -->
+            <th class="matrix-header" *ngIf="i === 0">∅</th>
+            <th class="matrix-header char-header" *ngIf="i > 0">
+              {{stringB[i-1]}}
+            </th>
+            
+            <!-- Matrix cells -->
+            <td 
+              *ngFor="let cell of row; let j = index"
+              [class]="getCellClasses(i, j)"
+              [title]="getOperationName(cell.operation) + ': ' + cell.value"
+            >
+              <span class="cell-value">{{cell.value}}</span>
+              <span class="cell-operation" *ngIf="cell.operation !== 'init'">
+                {{getOperationName(cell.operation).charAt(0)}}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Algorithm Explanation -->
+  <div class="explanation-section">
+    <h3>📖 Cómo Funciona el Algoritmo</h3>
+    <div class="explanation-content">
+      <div class="explanation-step">
+        <h4>1. Inicialización</h4>
+        <p>Se crea una matriz de (m+1) × (n+1) donde m y n son las longitudes de las cadenas.</p>
+        <p>La primera fila y columna se inicializan con números consecutivos (0, 1, 2, ...).</p>
+      </div>
+      
+      <div class="explanation-step">
+        <h4>2. Cálculo de cada celda</h4>
+        <p>Para cada celda (i,j), calculamos el mínimo de tres operaciones:</p>
+        <ul>
+          <li><strong>Sustitución:</strong> matriz[i-1][j-1] + (0 si coinciden, 1 si no)</li>
+          <li><strong>Inserción:</strong> matriz[i][j-1] + 1</li>
+          <li><strong>Eliminación:</strong> matriz[i-1][j] + 1</li>
+        </ul>
+      </div>
+      
+      <div class="explanation-step">
+        <h4>3. Resultado final</h4>
+        <p>El valor en la esquina inferior derecha es la distancia mínima de edición.</p>
+        <p>El camino óptimo se puede reconstruir siguiendo las decisiones que llevaron al mínimo.</p>
+      </div>
+    </div>
+  </div>
+</div>
