@@ -33,7 +33,7 @@
           },
           "configurations": {
             "production": {
-              "baseHref": "/levenshtein-demo-app/",
+              "baseHref": "/dist/levenshtein-demo-app/browser/",
               "budgets": [
                 {
                   "type": "initial",
@@ -52,6 +52,13 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "local": {
+              "baseHref": "/dist/levenshtein-demo-app/browser/",
+              "optimization": true,
+              "outputHashing": "all",
+              "sourceMap": false,
+              "extractLicenses": true
             }
           },
           "defaultConfiguration": "production"
