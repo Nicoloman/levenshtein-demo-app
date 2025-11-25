@@ -33,6 +33,7 @@
           },
           "configurations": {
             "production": {
+              "baseHref": "/levenshtein-demo-app/",
               "budgets": [
                 {
                   "type": "initial",
